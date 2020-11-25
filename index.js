@@ -13,33 +13,37 @@ const writeFile = util.promisify(fs.writeFile)
 const PROTO_PATH = 'node_modules/@theqrl/qrlbase.proto/qrlbase.proto'
 let qrlClient = null
 
-const clientGetNodeInfo = client => {
-  return new Promise((resolve, reject) => {
-    client.getNodeInfo({}, (error, response) => {
-      if (error) {
-        reject(error)
-      }
-      resolve(response)
+function clientGetNodeInfo (client) {
+  try {
+    return new Promise((resolve, reject) => {
+      client.getNodeInfo({}, (error, response) => {
+        if (error) {
+          reject(error)
+        }
+        resolve(response)
+      })
     })
-  })
+  } catch (error) {
+    console.log(error)
+  }
 }
 
-async function checkProtoHash(file) {
-  return readFile(file).then(async contents => {
+function checkProtoHash(file) {
+  return readFile(file).then(contents => {
     const protoFileWordArray = CryptoJS.lib.WordArray.create(contents.toString())
     const calculatedProtoHash = CryptoJS.SHA256(protoFileWordArray).toString(CryptoJS.enc.Hex)
     console.log('calculatedProtoHash: ' + calculatedProtoHash)
   })
 }
 
-async function loadGrpcBaseProto(grpcEndpoint) {
+function loadGrpcBaseProto(grpcEndpoint) {
   return protoLoader.load(PROTO_PATH, {}).then(async packageDefinition => {
     const packageObject = grpc.loadPackageDefinition(packageDefinition)
     const client = await new packageObject.qrl.Base(grpcEndpoint, grpc.credentials.createInsecure())
     const res = await clientGetNodeInfo(client)
     console.log('version: ' + res.version)
     const qrlProtoFilePath = tmp.fileSync({mode: '0644', prefix: 'qrl-', postfix: '.proto'}).name
-    await writeFile(qrlProtoFilePath, res.grpcProto).then(fsErr => {
+    writeFile(qrlProtoFilePath, res.grpcProto).then(fsErr => {
       if (fsErr) {
         throw new TypeError('tmp filesystem error')
       }
